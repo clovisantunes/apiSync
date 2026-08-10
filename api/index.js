@@ -148,17 +148,17 @@ app.post('/api/pagar', async (req, res) => {
     }
 });
 
-// ===== ROTA: VERIFICAR STATUS (CORRETA) =====
+// ===== ROTA: VERIFICAR STATUS DO PAGAMENTO =====
 app.get('/api/status/:identifier', async (req, res) => {
     try {
         const { identifier } = req.params;
 
-        console.log(`🔍 Verificando status: ${identifier}`);
+        console.log(`🔍 Verificando pagamento: ${identifier}`);
 
         const token = await getToken();
 
         const response = await axios.get(
-            `${SYNC_CONFIG.baseURL}/api/partner/v1/cash-in/${identifier}/status`,
+            `${SYNC_CONFIG.baseURL}/api/partner/v1/transaction/${identifier}`,
             {
                 headers: {
                     'Accept': 'application/json',
@@ -168,17 +168,31 @@ app.get('/api/status/:identifier', async (req, res) => {
             }
         );
 
-        console.log('📥 RESPOSTA SYNCPAY:', JSON.stringify(response.data, null, 2));
-        console.log('📊 STATUS SYNCPAY:', response.data.status);
+        console.log(
+            '📥 RESPOSTA SYNCPAY:',
+            JSON.stringify(response.data, null, 2)
+        );
+
+        const transaction = response.data.data;
+
+        console.log(`📊 STATUS DO PAGAMENTO: ${transaction.status}`);
 
         res.status(200).json({
-            status: response.data.status,
-            identifier,
-            message: response.data.message || 'Status atualizado'
+            status: transaction.status,
+            identifier: transaction.reference_id,
+            amount: transaction.amount,
+            currency: transaction.currency,
+            description: transaction.description,
+            message:
+                transaction.status === 'completed'
+                    ? 'Pagamento confirmado!'
+                    : transaction.status === 'pending'
+                        ? 'Aguardando pagamento...'
+                        : 'Status atualizado'
         });
 
     } catch (error) {
-        console.error('❌ ERRO STATUS:', error.message);
+        console.error('❌ ERRO AO CONSULTAR PAGAMENTO:', error.message);
 
         if (error.response) {
             console.error('❌ HTTP:', error.response.status);
