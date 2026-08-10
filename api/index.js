@@ -96,7 +96,6 @@ app.post('/api/pagar', async (req, res) => {
 
         const token = await getToken();
 
-        // ⚠️ SEM SPLIT - O DINHEIRO VAI DIRETO PRA VOCÊ!
         const payload = {
             amount: parseFloat(valor),
             description: descricao || 'Conteúdo exclusivo',
@@ -107,13 +106,9 @@ app.post('/api/pagar', async (req, res) => {
                 email: emailCliente,
                 phone: telefoneCliente.replace(/\D/g, '')
             }
-            // ← NÃO TEM SPLIT AQUI, PORRA!
         };
 
-        console.log(
-            '📤 Payload:',
-            JSON.stringify(payload, null, 2)
-        );
+        console.log('📤 Payload:', JSON.stringify(payload, null, 2));
 
         const response = await axios.post(
             `${SYNC_CONFIG.baseURL}/api/partner/v1/cash-in`,
@@ -143,58 +138,59 @@ app.post('/api/pagar', async (req, res) => {
         
         if (error.response) {
             console.error('Status:', error.response.status);
-            console.error(
-                'Dados:',
-                JSON.stringify(error.response.data, null, 2)
-            );
+            console.error('Dados:', JSON.stringify(error.response.data, null, 2));
         }
 
         res.status(500).json({
             success: false,
-            error:
-                error.response?.data?.message ||
-                error.message ||
-                'Erro ao gerar Pix'
+            error: error.response?.data?.message || error.message || 'Erro ao gerar Pix'
         });
     }
 });
 
-// ===== ROTA: VERIFICAR STATUS =====
-// ===== ROTA: VERIFICAR STATUS (SIMULADO) =====
+// ===== ROTA: VERIFICAR STATUS (CORRETA) =====
 app.get('/api/status/:identifier', async (req, res) => {
     try {
         const { identifier } = req.params;
 
-        console.log(
-            `🔍 Verificando status: ${identifier}`
+        console.log(`🔍 Verificando status: ${identifier}`);
+
+        // Obtém token válido
+        const token = await getToken();
+
+        // Consulta a SyncPay
+        const response = await axios.get(
+            `${SYNC_CONFIG.baseURL}/api/partner/v1/cash-in/${identifier}/status`,
+            {
+                headers: {
+                    'Accept': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                }
+            }
         );
 
-        // 🔥 SIMULAÇÃO - DEPOIS DE 10 SEGUNDOS, MARCA COMO PAGO
-        // Na vida real, você usaria o webhook da SyncPay
-        
-        const dataCriacao =
-            parseInt(identifier.split('_')[1]) || Date.now();
+        console.log(`📥 Status retornado:`, response.data);
 
-        const tempoPassado =
-            Date.now() - dataCriacao;
-        
-        // Se passou mais de 10 segundos, considera pago (SIMULAÇÃO)
-        const isPaid = tempoPassado > 10000;
-        
+        // Retorna o status real
         res.json({
-            status: isPaid ? 'paid' : 'pending',
+            status: response.data.status,
             identifier: identifier,
-            message: isPaid
-                ? 'Pagamento confirmado!'
-                : 'Aguardando pagamento...'
+            message: response.data.message || 'Status atualizado'
         });
 
     } catch (error) {
-        console.error('❌ Erro:', error.message);
+        console.error('❌ Erro ao verificar status:', error.message);
 
-        res.status(500).json({
-            success: false,
-            error: error.message
+        if (error.response) {
+            console.error('Status:', error.response.status);
+            console.error('Dados:', JSON.stringify(error.response.data, null, 2));
+        }
+
+        // Se não encontrar, retorna pending (não quebra o front)
+        res.status(200).json({
+            status: 'pending',
+            identifier: req.params.identifier,
+            message: 'Aguardando pagamento...'
         });
     }
 });
@@ -218,7 +214,4 @@ app.get('/api/health', async (req, res) => {
 });
 
 // ===== VERCEL =====
-// A Vercel executa o Express como Serverless Function.
-// Não usamos app.listen() aqui.
-
 module.exports = app;
