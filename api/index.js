@@ -155,38 +155,39 @@ app.get('/api/status/:identifier', async (req, res) => {
 
         console.log(`🔍 Verificando status: ${identifier}`);
 
-        // Obtém token válido
         const token = await getToken();
 
-        // Consulta a SyncPay
         const response = await axios.get(
             `${SYNC_CONFIG.baseURL}/api/partner/v1/cash-in/${identifier}/status`,
             {
                 headers: {
                     'Accept': 'application/json',
-                    'Authorization': `Bearer ${token}`
+                    'Authorization': `Bearer ${token}`,
+                    'Cache-Control': 'no-cache'
                 }
             }
         );
 
-        console.log(`📥 Status retornado:`, response.data);
+        console.log('📥 RESPOSTA SYNCPAY:', JSON.stringify(response.data, null, 2));
+        console.log('📊 STATUS SYNCPAY:', response.data.status);
 
-        // Retorna o status real
-        res.json({
+        res.status(200).json({
             status: response.data.status,
-            identifier: identifier,
+            identifier,
             message: response.data.message || 'Status atualizado'
         });
 
     } catch (error) {
-        console.error('❌ Erro ao verificar status:', error.message);
+        console.error('❌ ERRO STATUS:', error.message);
 
         if (error.response) {
-            console.error('Status:', error.response.status);
-            console.error('Dados:', JSON.stringify(error.response.data, null, 2));
+            console.error('❌ HTTP:', error.response.status);
+            console.error(
+                '❌ DATA:',
+                JSON.stringify(error.response.data, null, 2)
+            );
         }
 
-        // Se não encontrar, retorna pending (não quebra o front)
         res.status(200).json({
             status: 'pending',
             identifier: req.params.identifier,
