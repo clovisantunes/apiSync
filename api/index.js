@@ -156,18 +156,7 @@ app.get('/api/status/:identifier', async (req, res) => {
         console.log(`🔍 Verificando pagamento: ${identifier}`);
 
         const token = await getToken();
-console.log('🚨 VERSAO NOVA - CONSULTANDO TRANSACTION API');
 
-const response = await axios.get(
-    `${SYNC_CONFIG.baseURL}/api/partner/v1/transaction/${identifier}`,
-    {
-        headers: {
-            'Accept': 'application/json',
-            'Authorization': `Bearer ${token}`,
-            'Cache-Control': 'no-cache'
-        }
-    }
-);
         const response = await axios.get(
             `${SYNC_CONFIG.baseURL}/api/partner/v1/transaction/${identifier}`,
             {
